@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,11 @@
  */
 package org.parceler.internal;
 
+import org.androidtransfuse.adapter.ASTMethod;
 import org.androidtransfuse.adapter.ASTType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -29,21 +31,25 @@ public class ParcelableDescriptor {
     private final List<ReferencePair<FieldReference>> fieldPairs = new ArrayList<ReferencePair<FieldReference>>();
     private final List<ReferencePair<MethodReference>> methodPairs = new ArrayList<ReferencePair<MethodReference>>();
     private final ASTType parcelConverterType;
-    private final boolean parcelsIndex;
-    private ASTType[] extraImplementations;
+    private List<ASTType> extraImplementations = new ArrayList<ASTType>();
+    private List<ASTMethod> wrapCallbacks = new ArrayList<ASTMethod>();
+    private List<ASTMethod> unwrapCallbacks = new ArrayList<ASTMethod>();
+    private final Integer describeContents;
 
     public ParcelableDescriptor() {
-        this(new ASTType[0], true);
+        this(null, null);
     }
 
-    public ParcelableDescriptor(ASTType[] extraImplementations, boolean parcelsIndex) {
-        this(extraImplementations, null, parcelsIndex);
+    public ParcelableDescriptor(ASTType[] extraImplementations, Integer describeContents) {
+        this(extraImplementations, null, describeContents);
     }
 
-    public ParcelableDescriptor(ASTType[] extraImplementations, ASTType parcelConverterType, boolean parcelsIndex) {
+    public ParcelableDescriptor(ASTType[] extraImplementations, ASTType parcelConverterType, Integer describeContents) {
         this.parcelConverterType = parcelConverterType;
-        this.extraImplementations = extraImplementations;
-        this.parcelsIndex = parcelsIndex;
+        this.describeContents = describeContents;
+        if(extraImplementations != null) {
+            this.extraImplementations.addAll(Arrays.asList(extraImplementations));
+        }
     }
 
     public List<ReferencePair<FieldReference>> getFieldPairs() {
@@ -66,11 +72,19 @@ public class ParcelableDescriptor {
         return constructorPair;
     }
 
-    public ASTType[] getExtraImplementations() {
+    public List<ASTType> getExtraImplementations() {
         return extraImplementations;
     }
 
-    public boolean isParcelsIndex() {
-        return parcelsIndex;
+    public List<ASTMethod> getWrapCallbacks() {
+        return wrapCallbacks;
+    }
+
+    public List<ASTMethod> getUnwrapCallbacks() {
+        return unwrapCallbacks;
+    }
+
+    public Integer getDescribeContents() {
+        return describeContents;
     }
 }

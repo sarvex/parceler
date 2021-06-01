@@ -1,3 +1,18 @@
+/**
+ * Copyright 2011-2015 John Ericksen
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.parceler.internal;
 
 import com.google.common.collect.ImmutableSet;
@@ -23,7 +38,6 @@ public class ASTTypeHierarchyIteratorTest {
     private ASTType a;
     private ASTType b;
     private ASTType c;
-    private ASTType object;
 
     @Inject
     ASTClassFactory astClassFactory;
@@ -34,7 +48,6 @@ public class ASTTypeHierarchyIteratorTest {
         a = astClassFactory.getType(A.class);
         b = astClassFactory.getType(B.class);
         c = astClassFactory.getType(C.class);
-        object = astClassFactory.getType(Object.class);
     }
 
     @Test
@@ -47,15 +60,13 @@ public class ASTTypeHierarchyIteratorTest {
         assertEquals(b, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(c, iterator.next());
-        assertTrue(iterator.hasNext());
-        assertEquals(object, iterator.next());
         assertFalse(iterator.hasNext());
         assertEquals(null, iterator.next());
     }
 
     @Test
     public void testSkipIterator(){
-        Iterator<ASTType> iterator = new ASTTypeHierarchyIterator(a, ImmutableSet.<ASTType>of(b, c));
+        Iterator<ASTType> iterator = new ASTTypeHierarchyIterator(a, ImmutableSet.of(b, c));
 
         assertTrue(iterator.hasNext());
         assertEquals(b, iterator.next());
@@ -67,12 +78,10 @@ public class ASTTypeHierarchyIteratorTest {
 
     @Test
     public void testSkipIncludingObjectIterator(){
-        Iterator<ASTType> iterator = new ASTTypeHierarchyIterator(a, ImmutableSet.<ASTType>of(c, object));
+        Iterator<ASTType> iterator = new ASTTypeHierarchyIterator(a, ImmutableSet.of(c));
 
         assertTrue(iterator.hasNext());
         assertEquals(c, iterator.next());
-        assertTrue(iterator.hasNext());
-        assertEquals(object, iterator.next());
         assertFalse(iterator.hasNext());
         assertEquals(null, iterator.next());
     }

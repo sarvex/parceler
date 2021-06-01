@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,11 @@ package org.parceler.internal;
 import android.os.Parcel;
 import android.os.Parcelable;
 import com.google.common.collect.ImmutableSet;
-import com.sun.codemodel.JDefinedClass;
-import org.androidtransfuse.adapter.ASTConstructor;
-import org.androidtransfuse.adapter.ASTMethod;
-import org.androidtransfuse.adapter.ASTParameter;
-import org.androidtransfuse.adapter.ASTType;
+import org.androidtransfuse.adapter.*;
 import org.androidtransfuse.adapter.classes.ASTClassFactory;
 import org.androidtransfuse.bootstrap.Bootstrap;
 import org.androidtransfuse.bootstrap.Bootstraps;
+import org.androidtransfuse.gen.ClassNamer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,8 +31,6 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -73,31 +68,35 @@ public class ParcelableGeneratorTest {
     }
 
     @Test
-    public void testFieldSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testFieldSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
+
+        ASTField astField = targetType.getFields().iterator().next();
 
         descriptor.getFieldPairs().add(
                 new ReferencePair<FieldReference>("value",
-                        new FieldReference(targetType, "value", targetType.getFields().iterator().next()),
-                        new FieldReference(targetType, "value", targetType.getFields().iterator().next()), null));
+                        new FieldReference(targetType, "value", astField, astField.getASTType()),
+                        new FieldReference(targetType, "value", astField, astField.getASTType()), null));
 
         testSerialization(descriptor);
     }
 
     @Test
-    public void testFieldConverterSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testFieldConverterSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
+
+        ASTField astField = targetType.getFields().iterator().next();
 
         descriptor.getFieldPairs().add(
                 new ReferencePair<FieldReference>("value",
-                        new FieldReference(targetType, "value", targetType.getFields().iterator().next()),
-                        new FieldReference(targetType, "value", targetType.getFields().iterator().next()), converterType));
+                        new FieldReference(targetType, "value", astField, astField.getASTType()),
+                        new FieldReference(targetType, "value", astField, astField.getASTType()), converterType));
 
         testSerialization(descriptor);
     }
 
     @Test
-    public void testMethodSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testMethodSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
 
         ASTMethod getter = getMethod("getValue", targetType.getMethods());
@@ -113,7 +112,7 @@ public class ParcelableGeneratorTest {
     }
 
     @Test
-    public void testMethodConverterSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testMethodConverterSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
 
         ASTMethod getter = getMethod("getValue", targetType.getMethods());
@@ -129,7 +128,7 @@ public class ParcelableGeneratorTest {
     }
 
     @Test
-    public void testConstructorFieldSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testConstructorFieldSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
 
         ASTType stringType = astClassFactory.getType(String.class);
@@ -138,8 +137,10 @@ public class ParcelableGeneratorTest {
 
         ConstructorReference constructorReference = new ConstructorReference(constructor);
 
+        ASTField astField = targetType.getFields().iterator().next();
+
         constructorReference.putReference(constructor.getParameters().get(0),
-                new FieldReference(targetType, "value", targetType.getFields().iterator().next()));
+                new FieldReference(targetType, "value", astField, astField.getASTType()));
 
         descriptor.setConstructorPair(constructorReference);
 
@@ -147,7 +148,7 @@ public class ParcelableGeneratorTest {
     }
 
     @Test
-    public void testConstructorFieldConverterSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testConstructorFieldConverterSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
 
         ASTType stringType = astClassFactory.getType(String.class);
@@ -156,8 +157,10 @@ public class ParcelableGeneratorTest {
 
         ConstructorReference constructorReference = new ConstructorReference(constructor);
 
+        ASTField astField = targetType.getFields().iterator().next();
+
         constructorReference.putReference(constructor.getParameters().get(0),
-                new FieldReference(targetType, "value", targetType.getFields().iterator().next()));
+                new FieldReference(targetType, "value", astField, astField.getASTType()));
 
         constructorReference.putConverter(constructor.getParameters().get(0), converterType);
 
@@ -167,7 +170,7 @@ public class ParcelableGeneratorTest {
     }
 
     @Test
-    public void testConstructorMethodSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testConstructorMethodSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
 
         ASTMethod getter = getMethod("getValue", targetType.getMethods());
@@ -177,8 +180,10 @@ public class ParcelableGeneratorTest {
 
         ConstructorReference constructorReference = new ConstructorReference(constructor);
 
+        ASTField astField = targetType.getFields().iterator().next();
+
         constructorReference.putReference(constructor.getParameters().get(0),
-                new FieldReference(targetType, "value", targetType.getFields().iterator().next()));
+                new FieldReference(targetType, "value", astField, astField.getASTType()));
 
         descriptor.setConstructorPair(constructorReference);
 
@@ -186,7 +191,7 @@ public class ParcelableGeneratorTest {
     }
 
     @Test
-    public void testConstructorMethodConverterSerialization() throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void testConstructorMethodConverterSerialization() throws Exception {
         ParcelableDescriptor descriptor = new ParcelableDescriptor();
 
         ASTMethod getter = getMethod("getValue", targetType.getMethods());
@@ -196,8 +201,10 @@ public class ParcelableGeneratorTest {
 
         ConstructorReference constructorReference = new ConstructorReference(constructor);
 
+        ASTField astField = targetType.getFields().iterator().next();
+
         constructorReference.putReference(constructor.getParameters().get(0),
-                new FieldReference(targetType, "value", targetType.getFields().iterator().next()));
+                new FieldReference(targetType, "value", astField, astField.getASTType()));
 
         constructorReference.putConverter(constructor.getParameters().get(0), converterType);
 
@@ -239,11 +246,11 @@ public class ParcelableGeneratorTest {
         return null;
     }
 
-    private void testSerialization(ParcelableDescriptor descriptor) throws IOException, ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        JDefinedClass targetGenerated = generator.generateParcelable(targetType, descriptor);
+    private void testSerialization(ParcelableDescriptor descriptor) throws Exception {
+        generator.generateParcelable(targetType, descriptor);
 
         ClassLoader classLoader = codeGenerationUtil.build();
-        Class<Parcelable> parcelableClass = (Class<Parcelable>) classLoader.loadClass(targetGenerated.fullName());
+        Class<Parcelable> parcelableClass = (Class<Parcelable>) classLoader.loadClass(ClassNamer.className(targetType).append(Parcels.IMPL_EXT).build().toString());
 
         Parcelable outputParcelable = parcelableClass.getConstructor(Target.class).newInstance(target);
 
@@ -251,7 +258,7 @@ public class ParcelableGeneratorTest {
 
         parcel.setDataPosition(0);
 
-        Parcelable inputParcelable = parcelableClass.getConstructor(Parcel.class).newInstance(parcel);
+        Parcelable inputParcelable = ((Parcelable.Creator<Parcelable>)parcelableClass.getField("CREATOR").get(null)).createFromParcel(parcel);
 
         Target wrapped = Parcels.unwrap(inputParcelable);
 

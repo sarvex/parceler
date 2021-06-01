@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -262,6 +262,14 @@ final class NonParcelRepository implements Repository<Parcels.ParcelableFactory>
         @Override
         public Parcelable buildParcelable(String input) {
             return new StringParcelable(input);
+        }
+    }
+
+    static class ParcelableParcelableFactory implements Parcels.ParcelableFactory<Parcelable>{
+
+        @Override
+        public Parcelable buildParcelable(Parcelable input) {
+            return new ParcelableParcelable(input);
         }
     }
 
@@ -1205,14 +1213,14 @@ final class NonParcelRepository implements Repository<Parcels.ParcelableFactory>
     private static class ConverterParcelable<T> implements Parcelable, ParcelWrapper<T> {
 
         private final T value;
-        private final ParcelConverter<T> converter;
+        private final TypeRangeParcelConverter<T, T> converter;
 
         @SuppressWarnings("unchecked")
-        private ConverterParcelable(android.os.Parcel parcel, ParcelConverter<T> converter) {
+        private ConverterParcelable(android.os.Parcel parcel, TypeRangeParcelConverter<T, T> converter) {
             this(converter.fromParcel(parcel), converter);
         }
 
-        private ConverterParcelable(T value, ParcelConverter<T> converter) {
+        private ConverterParcelable(T value, TypeRangeParcelConverter<T, T> converter) {
             this.converter = converter;
             this.value = value;
         }
@@ -1230,6 +1238,49 @@ final class NonParcelRepository implements Repository<Parcels.ParcelableFactory>
         @Override
         public T getParcel() {
             return value;
+        }
+    }
+
+    public static final class ParcelableParcelable implements Parcelable, ParcelWrapper<Parcelable> {
+
+        private Parcelable parcelable;
+
+        private ParcelableParcelable(android.os.Parcel parcel) {
+            parcelable = parcel.readParcelable(ParcelableParcelable.class.getClassLoader());
+        }
+
+        private ParcelableParcelable(Parcelable parcelable) {
+            this.parcelable = parcelable;
+        }
+
+        @Override
+        public void writeToParcel(android.os.Parcel parcel, int flags) {
+            parcel.writeParcelable(parcelable, flags);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public Parcelable getParcel() {
+            return parcelable;
+        }
+
+        public static final ParcelableParcelableCreator CREATOR = new ParcelableParcelableCreator();
+
+        private static final class ParcelableParcelableCreator implements Creator<ParcelableParcelable> {
+
+            @Override
+            public ParcelableParcelable createFromParcel(android.os.Parcel parcel) {
+                return new ParcelableParcelable(parcel);
+            }
+
+            @Override
+            public ParcelableParcelable[] newArray(int size) {
+                return new ParcelableParcelable[size];
+            }
         }
     }
 }

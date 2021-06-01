@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 package org.parceler;
 
 import org.apache.commons.lang.RandomStringUtils;
-import uk.co.jemos.podam.api.AttributeStrategy;
+import uk.co.jemos.podam.common.AttributeStrategy;
 import uk.co.jemos.podam.exceptions.PodamMockeryException;
 
 /**

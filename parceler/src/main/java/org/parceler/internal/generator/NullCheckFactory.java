@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,11 +41,11 @@ public class NullCheckFactory {
         this.astClassFactory = astClassFactory;
     }
 
-    public NullCheckReadWriteGenerator get(Class boxedType, Generators generators, Class unboxed){
-        return new NullCheckReadWriteGenerator(astClassFactory.getType(boxedType), astClassFactory.getType(unboxed), codeModel, generationUtil, namer, generators);
+    public NullCheckReadWriteGenerator get(Generators generators, Class unboxed){
+        return new NullCheckReadWriteLazyLookupGenerator(codeModel, generationUtil, namer, generators, astClassFactory.getType(unboxed));
     }
 
-    public NullCheckReadWriteGenerator get(Class boxedType, ReadWriteGenerator generator){
-        return new NullCheckReadWriteGenerator(astClassFactory.getType(boxedType), generator, codeModel, generationUtil, namer);
+    public NullCheckReadWriteGenerator get(ReadWriteGenerator generator){
+        return new NullCheckReadWriteGeneratorDecorator(codeModel, generationUtil, namer, generator);
     }
 }

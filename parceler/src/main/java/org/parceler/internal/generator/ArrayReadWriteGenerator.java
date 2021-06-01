@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ public class ArrayReadWriteGenerator extends ReadWriteGeneratorBase {
     }
 
     @Override
-    public JExpression generateReader(JBlock body, JVar parcelParam, ASTType type, JClass returnJClassRef, JDefinedClass parcelableClass) {
+    public JExpression generateReader(JBlock body, JVar parcelParam, ASTType type, JClass returnJClassRef, JDefinedClass parcelableClass, JVar identity, JVar readIdentityMap) {
 
         if(!(type instanceof ASTArrayType)){
             throw new ParcelerRuntimeException("Input type not an array");
@@ -78,7 +78,7 @@ public class ArrayReadWriteGenerator extends ReadWriteGeneratorBase {
 
         ReadWriteGenerator generator = generators.getGenerator(componentType);
 
-        JExpression readExpression = generator.generateReader(readLoopBody, parcelParam, componentType, generationUtil.ref(componentType), parcelableClass);
+        JExpression readExpression = generator.generateReader(readLoopBody, parcelParam, componentType, generationUtil.ref(componentType), parcelableClass, identity, readIdentityMap);
 
         readLoopBody.assign(outputVar.component(nVar), readExpression);
 
@@ -86,7 +86,7 @@ public class ArrayReadWriteGenerator extends ReadWriteGeneratorBase {
     }
 
     @Override
-    public void generateWriter(JBlock body, JExpression parcel, JVar flags, ASTType type, JExpression getExpression, JDefinedClass parcelableClass) {
+    public void generateWriter(JBlock body, JExpression parcel, JVar flags, ASTType type, JExpression getExpression, JDefinedClass parcelableClass, JVar writeIdentitySet) {
 
         if(!(type instanceof ASTArrayType)){
             throw new ParcelerRuntimeException("Input type not an array");
@@ -108,6 +108,6 @@ public class ArrayReadWriteGenerator extends ReadWriteGeneratorBase {
 
         ReadWriteGenerator generator = generators.getGenerator(componentType);
 
-        generator.generateWriter(forEach.body(), parcel, flags, componentType, forEach.var(), parcelableClass);
+        generator.generateWriter(forEach.body(), parcel, flags, componentType, forEach.var(), parcelableClass, writeIdentitySet);
     }
 }

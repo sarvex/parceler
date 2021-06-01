@@ -1,5 +1,5 @@
-.idea/*
-_site/*
+.idea
+_site
 *~
 *.iml
 dependency-reduced-pom.xml
@@ -8,4 +8,6 @@ target
 tmp
 out
 .gradle
-examples/gradle/gradleParceler/build/*
+build
+.DS_Store
+local.properties

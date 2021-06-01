@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+
+import android.content.Intent;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -128,6 +130,13 @@ public class ParcelTest {
 
         assertEquals(10, unwrapped.i);
         assertArrayEquals(new int[]{1, 2, 3, 4, 5}, unwrapped.getArr());
+    }
+
+    @Test
+    public void testParcelableClassWithoutAnnotation() {
+        Intent expected = new Intent("someAction");
+        Intent actual = Parcels.unwrap(ParcelsTestUtil.wrap(expected));
+        assertEquals(expected, actual);
     }
 
     @Parcel(Parcel.Serialization.BEAN)

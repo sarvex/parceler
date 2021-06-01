@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,11 @@
  */
 package org.parceler.internal;
 
-import org.androidtransfuse.TransfuseAnalysisException;
 import org.androidtransfuse.adapter.ASTType;
 import org.androidtransfuse.transaction.ScopedTransactionBuilder;
 import org.androidtransfuse.transaction.TransactionProcessor;
 import org.androidtransfuse.transaction.TransactionProcessorPool;
+import org.androidtransfuse.util.Logger;
 import org.parceler.Parcel;
 import org.parceler.ParcelClass;
 import org.parceler.ParcelClasses;
@@ -27,7 +27,7 @@ import org.parceler.ParcelClasses;
 import javax.inject.Provider;
 import java.lang.annotation.Annotation;
 import java.util.Collection;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * @author John Ericksen
@@ -36,21 +36,25 @@ public class ParcelProcessor {
 
     private final TransactionProcessor processor;
     private final TransactionProcessorPool<Provider<ASTType>, Provider<ASTType>> externalParcelRepositoryProcessor;
-    private final TransactionProcessorPool<Provider<ASTType>, Map<Provider<ASTType>, ParcelImplementations>> externalParcelProcessor;
-    private final TransactionProcessorPool<Provider<ASTType>, ParcelImplementations> parcelProcessor;
+    private final TransactionProcessorPool<Provider<ASTType>, Void> externalParcelProcessor;
+    private final TransactionProcessorPool<Provider<ASTType>, Void> parcelProcessor;
     private final Provider<ExternalParcelRepositoryTransactionWorker> externalParcelRepositoryTransactionWorkerProvider;
     private final Provider<ExternalParcelTransactionWorker> externalParcelTransactionWorkerProvider;
     private final Provider<ParcelTransactionWorker> parcelTransactionWorkerProvider;
     private final ScopedTransactionBuilder scopedTransactionBuilder;
+    private final Logger logger;
+    private final boolean stacktrace;
 
     public ParcelProcessor(TransactionProcessor processor,
                            TransactionProcessorPool<Provider<ASTType>, Provider<ASTType>> externalParcelRepositoryProcessor,
-                           TransactionProcessorPool<Provider<ASTType>, Map<Provider<ASTType>, ParcelImplementations>> externalParcelProcessor,
-                           TransactionProcessorPool<Provider<ASTType>, ParcelImplementations> parcelProcessor,
+                           TransactionProcessorPool<Provider<ASTType>, Void> externalParcelProcessor,
+                           TransactionProcessorPool<Provider<ASTType>, Void> parcelProcessor,
                            Provider<ExternalParcelRepositoryTransactionWorker> externalParcelRepositoryTransactionWorkerProvider,
                            Provider<ExternalParcelTransactionWorker> externalParcelTransactionWorkerProvider,
                            Provider<ParcelTransactionWorker> parcelTransactionWorkerProvider,
-                           ScopedTransactionBuilder scopedTransactionBuilder) {
+                           ScopedTransactionBuilder scopedTransactionBuilder,
+                           Logger logger,
+                           boolean stacktrace) {
         this.processor = processor;
         this.externalParcelRepositoryProcessor = externalParcelRepositoryProcessor;
         this.externalParcelProcessor = externalParcelProcessor;
@@ -59,6 +63,8 @@ public class ParcelProcessor {
         this.externalParcelTransactionWorkerProvider = externalParcelTransactionWorkerProvider;
         this.parcelTransactionWorkerProvider = parcelTransactionWorkerProvider;
         this.scopedTransactionBuilder = scopedTransactionBuilder;
+        this.logger = logger;
+        this.stacktrace = stacktrace;
     }
 
     public void submit(Class<? extends Annotation> annotation, Collection<Provider<ASTType>> parcelProviders) {
@@ -77,9 +83,16 @@ public class ParcelProcessor {
         processor.execute();
     }
 
-    public void checkForErrors() {
+    public void logErrors() {
         if (!processor.isComplete()) {
-            throw new TransfuseAnalysisException("@Parcel code generation did not complete successfully.", processor.getErrors());
+            if (stacktrace) {
+                for (Exception exception : (Set<Exception>) processor.getErrors()) {
+                    logger.error("Code generation did not complete successfully.", exception);
+                }
+            }
+            else{
+                logger.error("Code generation did not complete successfully.  For more details add the compiler argument -AparcelerStacktrace");
+            }
         }
     }
 }

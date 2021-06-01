@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,10 +35,15 @@ public class ListReadWriteGenerator extends ReadWriteGeneratorBase {
     private final Generators generators;
     private final ASTClassFactory astClassFactory;
     private final JCodeModel codeModel;
-    private final Class<? extends List> listType;
+    private final ASTType listType;
+    private final boolean listInitialCapacityArgument;
 
     @Inject
-    public ListReadWriteGenerator(ClassGenerationUtil generationUtil, UniqueVariableNamer namer, Generators generators, ASTClassFactory astClassFactory, JCodeModel codeModel, Class<? extends List> listType) {
+    public ListReadWriteGenerator(ClassGenerationUtil generationUtil, UniqueVariableNamer namer, Generators generators, ASTClassFactory astClassFactory, JCodeModel codeModel, Class<? extends List> listType, boolean listInitialCapacityArgument) {
+        this(generationUtil, namer, generators, astClassFactory, codeModel, astClassFactory.getType(listType), listInitialCapacityArgument);
+    }
+
+    public ListReadWriteGenerator(ClassGenerationUtil generationUtil, UniqueVariableNamer namer, Generators generators, ASTClassFactory astClassFactory, JCodeModel codeModel, ASTType listType, boolean listInitialCapacityArgument) {
         super("readArrayList", new Class[]{ClassLoader.class}, "writeList", new Class[]{List.class});
         this.generationUtil = generationUtil;
         this.generators = generators;
@@ -46,17 +51,18 @@ public class ListReadWriteGenerator extends ReadWriteGeneratorBase {
         this.astClassFactory = astClassFactory;
         this.codeModel = codeModel;
         this.listType = listType;
+        this.listInitialCapacityArgument = listInitialCapacityArgument;
     }
 
     @Override
-    public JExpression generateReader(JBlock body, JVar parcelParam, ASTType type, JClass returnJClassRef, JDefinedClass parcelableClass) {
+    public JExpression generateReader(JBlock body, JVar parcelParam, ASTType type, JClass returnJClassRef, JDefinedClass parcelableClass, JVar identity, JVar readIdentityMap) {
 
         JClass arrayListType = generationUtil.ref(listType);
 
         ASTType componentType = astClassFactory.getType(Object.class);
 
-        if(type.getGenericParameters().size() == 1){
-            componentType = type.getGenericParameters().iterator().next();
+        if(type.getGenericArgumentTypes().size() == 1){
+            componentType = type.getGenericArgumentTypes().iterator().next();
             arrayListType = arrayListType.narrow(generationUtil.narrowRef(componentType));
         }
 
@@ -72,7 +78,13 @@ public class ListReadWriteGenerator extends ReadWriteGeneratorBase {
 
         JBlock nonNullBody = nullInputConditional._else();
 
-        nonNullBody.assign(outputVar, JExpr._new(arrayListType));
+        JInvocation listCreation = JExpr._new(arrayListType);
+
+        if(listInitialCapacityArgument){
+            listCreation = listCreation.arg(sizeVar);
+        }
+
+        nonNullBody.assign(outputVar, listCreation);
 
         JForLoop forLoop = nonNullBody._for();
         JVar nVar = forLoop.init(codeModel.INT, namer.generateName(codeModel.INT), JExpr.lit(0));
@@ -82,7 +94,7 @@ public class ListReadWriteGenerator extends ReadWriteGeneratorBase {
 
         ReadWriteGenerator generator = generators.getGenerator(componentType);
 
-        JExpression readExpression = generator.generateReader(readLoopBody, parcelParam, componentType, generationUtil.ref(componentType), parcelableClass);
+        JExpression readExpression = generator.generateReader(readLoopBody, parcelParam, componentType, generationUtil.ref(componentType), parcelableClass, identity, readIdentityMap);
 
         readLoopBody.invoke(outputVar, "add").arg(readExpression);
 
@@ -90,12 +102,12 @@ public class ListReadWriteGenerator extends ReadWriteGeneratorBase {
     }
 
     @Override
-    public void generateWriter(JBlock body, JExpression parcel, JVar flags, ASTType type, JExpression getExpression, JDefinedClass parcelableClass) {
+    public void generateWriter(JBlock body, JExpression parcel, JVar flags, ASTType type, JExpression getExpression, JDefinedClass parcelableClass, JVar writeIdentitySet) {
 
         ASTType componentType = astClassFactory.getType(Object.class);
 
-        if(type.getGenericParameters().size() == 1){
-            componentType = type.getGenericParameters().iterator().next();
+        if(type.getGenericArgumentTypes().size() == 1){
+            componentType = type.getGenericArgumentTypes().iterator().next();
         }
         JClass inputType = generationUtil.narrowRef(componentType);
 
@@ -106,10 +118,10 @@ public class ListReadWriteGenerator extends ReadWriteGeneratorBase {
         JBlock writeBody = nullConditional._else();
 
         writeBody.invoke(parcel, "writeInt").arg(getExpression.invoke("size"));
-        JForEach forEach = writeBody.forEach(inputType, namer.generateName(inputType), JExpr.cast(generationUtil.narrowRef(type), getExpression));
+        JForEach forEach = writeBody.forEach(inputType, namer.generateName(inputType), getExpression);
 
         ReadWriteGenerator generator = generators.getGenerator(componentType);
 
-        generator.generateWriter(forEach.body(), parcel, flags, componentType, forEach.var(), parcelableClass);
+        generator.generateWriter(forEach.body(), parcel, flags, componentType, forEach.var(), parcelableClass, writeIdentitySet);
     }
 }

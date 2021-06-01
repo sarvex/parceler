@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,18 +24,19 @@ import org.parceler.ParcelClasses;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Executes the analysis and generation of an annotated @Parcel class.
  *
  * @author John Ericksen
  */
-public class ExternalParcelTransactionWorker extends AbstractCompletionTransactionWorker<Provider<ASTType>, Map<Provider<ASTType>, ParcelImplementations>> {
+public class ExternalParcelTransactionWorker extends AbstractCompletionTransactionWorker<Provider<ASTType>, Void> {
 
     private final ParcelableAnalysis parcelableAnalysis;
     private final ParcelableGenerator parcelableGenerator;
+    private final Set<ASTType> analyzed = new HashSet<ASTType>();
 
     @Inject
     public ExternalParcelTransactionWorker(ParcelableAnalysis parcelableAnalysis, ParcelableGenerator parcelableGenerator) {
@@ -44,51 +45,39 @@ public class ExternalParcelTransactionWorker extends AbstractCompletionTransacti
     }
 
     @Override
-    public Map<Provider<ASTType>, ParcelImplementations> innerRun(Provider<ASTType> valueProvider) {
+    public Void innerRun(Provider<ASTType> valueProvider) {
 
         ASTType value = valueProvider.get();
-        Map<Provider<ASTType>, ParcelImplementations> generatedSource = new HashMap<Provider<ASTType>, ParcelImplementations>();
 
         ASTAnnotation parcelClassesAnnotation = value.getASTAnnotation(ParcelClasses.class);
         if(parcelClassesAnnotation != null){
             ASTAnnotation[] parcelTypes = parcelClassesAnnotation.getProperty("value", ASTAnnotation[].class);
 
             for(ASTAnnotation annotation : parcelTypes){
-                analyze(annotation, generatedSource);
+                analyze(annotation);
             }
         }
 
         ASTAnnotation astAnnotation = value.getASTAnnotation(ParcelClass.class);
         if(astAnnotation != null){
-            analyze(astAnnotation, generatedSource);
+            analyze(astAnnotation);
         }
 
-        return generatedSource;
+        return null;
     }
 
-    private void analyze(ASTAnnotation astAnnotation, Map<Provider<ASTType>, ParcelImplementations> generatedSource){
+    private void analyze(ASTAnnotation astAnnotation){
         ASTType parcelType = astAnnotation.getProperty("value", ASTType.class);
-        ASTAnnotation parcelASTAnnotation = astAnnotation.getProperty("annotation", ASTAnnotation.class);
-        if(parcelASTAnnotation == null){
-            parcelASTAnnotation = parcelType.getASTAnnotation(Parcel.class);
-        }
-        ParcelableDescriptor analysis = parcelableAnalysis.analyze(parcelType, parcelASTAnnotation);
-        if(analysis != null) {
-            generatedSource.put(new ASTTypeProvider(parcelType), new ParcelImplementations(parcelableGenerator.generateParcelable(parcelType, analysis), analysis.isParcelsIndex()));
-        }
-    }
-
-    private static final class ASTTypeProvider implements Provider<ASTType>{
-
-        private ASTType parcelType;
-
-        private ASTTypeProvider(ASTType parcelType) {
-            this.parcelType = parcelType;
-        }
-
-        @Override
-        public ASTType get() {
-            return parcelType;
+        if(!analyzed.contains(parcelType)) {
+            analyzed.add(parcelType);
+            ASTAnnotation parcelASTAnnotation = astAnnotation.getProperty("annotation", ASTAnnotation.class);
+            if (parcelASTAnnotation == null) {
+                parcelASTAnnotation = parcelType.getASTAnnotation(Parcel.class);
+            }
+            ParcelableDescriptor analysis = parcelableAnalysis.analyze(parcelType, parcelASTAnnotation);
+            if (analysis != null) {
+                parcelableGenerator.generateParcelable(parcelType, analysis);
+            }
         }
     }
 }

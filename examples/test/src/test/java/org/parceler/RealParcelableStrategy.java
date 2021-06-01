@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,17 @@
  */
 package org.parceler;
 
-public class RepositoryUpdater {
+import android.os.Parcelable;
+import org.apache.commons.lang.RandomStringUtils;
+import uk.co.jemos.podam.common.AttributeStrategy;
+import uk.co.jemos.podam.exceptions.PodamMockeryException;
 
-    public static void updateParcels(ClassLoader classLoader){
-        Parcels.update(classLoader);
+/**
+ * @author John Ericksen
+ */
+public class RealParcelableStrategy implements AttributeStrategy<Parcelable> {
+    @Override
+    public Parcelable getValue() throws PodamMockeryException {
+        return new RealParcelable(RandomStringUtils.random(10));
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,12 @@ public class ParcelsTestUtil {
 
             Parcelable parcelable = Parcels.wrap(inputType, input);
 
-            parcelable.writeToParcel(parcel, 0);
+            if (parcelable != null) {
+                parcelable.writeToParcel(parcel, 0);
+            }
+            else {
+                return null;
+            }
             parcel.setDataPosition(0);
 
             Field creatorField = parcelable.getClass().getField("CREATOR");

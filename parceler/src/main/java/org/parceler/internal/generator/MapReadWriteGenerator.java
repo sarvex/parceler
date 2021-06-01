@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.androidtransfuse.adapter.ASTType;
 import org.androidtransfuse.adapter.classes.ASTClassFactory;
 import org.androidtransfuse.gen.ClassGenerationUtil;
 import org.androidtransfuse.gen.UniqueVariableNamer;
+import org.parceler.MapsUtil;
 import org.parceler.internal.Generators;
 
 import javax.inject.Inject;
@@ -36,10 +37,16 @@ public class MapReadWriteGenerator extends ReadWriteGeneratorBase {
     private final Generators generators;
     private final ASTClassFactory astClassFactory;
     private final JCodeModel codeModel;
-    private final Class<? extends Map> mapType;
+    private final ASTType mapType;
+    private final boolean mapInitialCapacityArgument;
+    private final boolean initialCapacityLoadFactor;
 
     @Inject
-    public MapReadWriteGenerator(ClassGenerationUtil generationUtil, UniqueVariableNamer namer, Generators generators, ASTClassFactory astClassFactory, JCodeModel codeModel, Class<? extends Map> mapType) {
+    public MapReadWriteGenerator(ClassGenerationUtil generationUtil, UniqueVariableNamer namer, Generators generators, ASTClassFactory astClassFactory, JCodeModel codeModel, Class<? extends Map> mapType, boolean mapInitialCapacityArgument, boolean initialCapacityLoadFactor) {
+        this(generationUtil, namer, generators, astClassFactory, codeModel, astClassFactory.getType(mapType), mapInitialCapacityArgument, initialCapacityLoadFactor);
+    }
+
+    public MapReadWriteGenerator(ClassGenerationUtil generationUtil, UniqueVariableNamer namer, Generators generators, ASTClassFactory astClassFactory, JCodeModel codeModel, ASTType mapType, boolean mapInitialCapacityArgument, boolean initialCapacityLoadFactor) {
         super("readHashMap", new Class[]{ClassLoader.class}, "writeMap", new Class[]{Map.class});
         this.generationUtil = generationUtil;
         this.generators = generators;
@@ -47,30 +54,32 @@ public class MapReadWriteGenerator extends ReadWriteGeneratorBase {
         this.astClassFactory = astClassFactory;
         this.codeModel = codeModel;
         this.mapType = mapType;
+        this.mapInitialCapacityArgument = mapInitialCapacityArgument;
+        this.initialCapacityLoadFactor = initialCapacityLoadFactor;
     }
 
     @Override
-    public JExpression generateReader(JBlock body, JVar parcelParam, ASTType type, JClass returnJClassRef, JDefinedClass parcelableClass) {
+    public JExpression generateReader(JBlock body, JVar parcelParam, ASTType type, JClass returnJClassRef, JDefinedClass parcelableClass, JVar identity, JVar readIdentityMap) {
 
-        JClass hashMapType = generationUtil.ref(mapType);
+        JClass mapImplType = generationUtil.ref(mapType);
 
         ASTType keyComponentType = astClassFactory.getType(Object.class);
         ASTType valueComponentType = astClassFactory.getType(Object.class);
         JClass keyType = generationUtil.ref(Object.class);
         JClass valueType = generationUtil.ref(Object.class);
 
-        if(type.getGenericParameters().size() == 2){
-            UnmodifiableIterator<ASTType> iterator = type.getGenericParameters().iterator();
+        if(type.getGenericArgumentTypes().size() == 2){
+            UnmodifiableIterator<ASTType> iterator = type.getGenericArgumentTypes().iterator();
             keyComponentType = iterator.next();
             valueComponentType = iterator.next();
             keyType = generationUtil.narrowRef(keyComponentType);
             valueType = generationUtil.narrowRef(valueComponentType);
-            hashMapType = hashMapType.narrow(keyType, valueType);
+            mapImplType = mapImplType.narrow(keyType, valueType);
         }
 
         JVar sizeVar = body.decl(codeModel.INT, namer.generateName(codeModel.INT), parcelParam.invoke("readInt"));
 
-        JVar outputVar = body.decl(hashMapType, namer.generateName(Map.class));
+        JVar outputVar = body.decl(mapImplType, namer.generateName(Map.class));
 
         JConditional nullInputConditional = body._if(sizeVar.lt(JExpr.lit(0)));
 
@@ -80,7 +89,19 @@ public class MapReadWriteGenerator extends ReadWriteGeneratorBase {
 
         JBlock nonNullBody = nullInputConditional._else();
 
-        nonNullBody.assign(outputVar, JExpr._new(hashMapType));
+        JInvocation mapConstruction = JExpr._new(mapImplType);
+        if(mapInitialCapacityArgument) {
+            JExpression initialCapacityExpression;
+            if(initialCapacityLoadFactor) {
+                initialCapacityExpression = generationUtil.ref(MapsUtil.class).staticInvoke(MapsUtil.INITIAL_HASH_MAP_CAPACITY_METHOD).arg(sizeVar);
+            }
+            else{
+                initialCapacityExpression = sizeVar;
+            }
+            mapConstruction = mapConstruction.arg(initialCapacityExpression);
+        }
+
+        nonNullBody.assign(outputVar, mapConstruction);
 
         JForLoop forLoop = nonNullBody._for();
         JVar nVar = forLoop.init(codeModel.INT, namer.generateName(codeModel.INT), JExpr.lit(0));
@@ -91,10 +112,10 @@ public class MapReadWriteGenerator extends ReadWriteGeneratorBase {
         ReadWriteGenerator keyGenerator = generators.getGenerator(keyComponentType);
         ReadWriteGenerator valueGenerator = generators.getGenerator(valueComponentType);
 
-        JExpression readKeyExpression = keyGenerator.generateReader(readLoopBody, parcelParam, keyComponentType, generationUtil.ref(keyComponentType), parcelableClass);
+        JExpression readKeyExpression = keyGenerator.generateReader(readLoopBody, parcelParam, keyComponentType, generationUtil.ref(keyComponentType), parcelableClass, identity, readIdentityMap);
         JVar keyVar = readLoopBody.decl(keyType, namer.generateName(keyComponentType), readKeyExpression);
 
-        JExpression readValueExpression = valueGenerator.generateReader(readLoopBody, parcelParam, valueComponentType, generationUtil.ref(valueComponentType), parcelableClass);
+        JExpression readValueExpression = valueGenerator.generateReader(readLoopBody, parcelParam, valueComponentType, generationUtil.ref(valueComponentType), parcelableClass, identity, readIdentityMap);
         JVar valueVar = readLoopBody.decl(valueType, namer.generateName(valueComponentType), readValueExpression);
 
         readLoopBody.invoke(outputVar, "put").arg(keyVar).arg(valueVar);
@@ -103,13 +124,13 @@ public class MapReadWriteGenerator extends ReadWriteGeneratorBase {
     }
 
     @Override
-    public void generateWriter(JBlock body, JExpression parcel, JVar flags, ASTType type, JExpression getExpression, JDefinedClass parcelableClass) {
+    public void generateWriter(JBlock body, JExpression parcel, JVar flags, ASTType type, JExpression getExpression, JDefinedClass parcelableClass, JVar writeIdentitySet) {
 
         ASTType keyComponentType = astClassFactory.getType(Object.class);
         ASTType valueComponentType = astClassFactory.getType(Object.class);
 
-        if(type.getGenericParameters().size() == 2){
-            UnmodifiableIterator<ASTType> iterator = type.getGenericParameters().iterator();
+        if(type.getGenericArgumentTypes().size() == 2){
+            UnmodifiableIterator<ASTType> iterator = type.getGenericArgumentTypes().iterator();
             keyComponentType = iterator.next();
             valueComponentType = iterator.next();
         }
@@ -126,12 +147,12 @@ public class MapReadWriteGenerator extends ReadWriteGeneratorBase {
 
         writeBody.invoke(parcel, "writeInt").arg(getExpression.invoke("size"));
 
-        JForEach forEach = writeBody.forEach(inputType, namer.generateName(inputType), ((JExpression)JExpr.cast(generationUtil.narrowRef(type), getExpression)).invoke("entrySet"));
+        JForEach forEach = writeBody.forEach(inputType, namer.generateName(inputType), getExpression.invoke("entrySet"));
 
         ReadWriteGenerator keyGenerator = generators.getGenerator(keyComponentType);
         ReadWriteGenerator valueGenerator = generators.getGenerator(valueComponentType);
 
-        keyGenerator.generateWriter(forEach.body(), parcel, flags, keyComponentType, forEach.var().invoke("getKey"), parcelableClass);
-        valueGenerator.generateWriter(forEach.body(), parcel, flags, valueComponentType, forEach.var().invoke("getValue"), parcelableClass);
+        keyGenerator.generateWriter(forEach.body(), parcel, flags, keyComponentType, forEach.var().invoke("getKey"), parcelableClass, writeIdentitySet);
+        valueGenerator.generateWriter(forEach.body(), parcel, flags, valueComponentType, forEach.var().invoke("getValue"), parcelableClass, writeIdentitySet);
     }
 }

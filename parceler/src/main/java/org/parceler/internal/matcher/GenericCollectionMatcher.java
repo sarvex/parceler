@@ -1,5 +1,5 @@
 /**
- * Copyright 2013-2015 John Ericksen
+ * Copyright 2011-2015 John Ericksen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,8 @@ public class GenericCollectionMatcher implements Matcher<ASTType> {
     public boolean matches(ASTType input) {
 
         return collectionMatcher.matches(input) &&
-            input.getGenericParameters().size() == parameterCount &&
-            FluentIterable.from(input.getGenericParameters()).allMatch(new Predicate<ASTType>() {
+            input.getGenericArgumentTypes().size() == parameterCount &&
+            FluentIterable.from(input.getGenericArgumentTypes()).allMatch(new Predicate<ASTType>() {
                 public boolean apply(ASTType astType) {
                     return generators.matches(astType);
                 }
